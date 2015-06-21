@@ -1,0 +1,79 @@
+---
+title: "Practical Machine Learning Course Assignment"
+author: "Ruth Akintunde"
+date: "Sunday, June 21, 2015"
+output: html_document
+---
+### Executive Summary
+
+
+### Data Processing
+
+```{r}
+library(caret)
+pmltraining<-read.csv("pml-training.csv",na.strings=c("","NA","#DIV/0!"))
+
+pmltraining<-pmltraining[,colSums(is.na(pmltraining))==0]
+pmltraining<-pmltraining[,-c(1:7)]
+
+set.seed(1445)
+inTrain<-createDataPartition(y=pmltraining$classe,p=0.6,list=FALSE)
+training<-pmltraining[inTrain,]
+test<-pmltraining[-inTrain,]
+```
+
+## Now we have our train and test sets. Let's create a prediction model with trees
+
+```{r}
+modFitTrees<-train(classe~.,method="rpart",data=training)
+pred<-predict(modFitTrees$finalModel,training, type = "class")
+confusionMatrix(pred,training$classe)
+
+
+```
+* We can see from our results in R, the accuracy is very low, so we do further analysis with random forest model, which is known to produce models with high accuracy
+
+
+```{r}
+modFitRandomForest<-train(classe~.,method="rf",data=training,trControl=trainControl(method="cv",number = 5),prox=TRUE)
+pred2<-predict(modFitRandomForest$finalModel,training, type="class")
+confusionMatrix(pred2,training$classe)
+
+```
+
+Let us employ our model to the test data
+```{r}
+modFitRandomForest<-train(classe~.,method="rf",data=training,trControl=trainControl(method="cv",number = 5),prox=TRUE)
+pred2<-predict(modFitRandomForest$finalModel,training, type="class")
+confusionMatrix(pred2,training$classe)
+
+predTest<-predict(modFitRandomForest$finalModel,test, type="class")
+confusionMatrix(predTest,test$classe)
+
+
+```
+
+
+
+### Project Submission
+
+
+
+Our model is "modFitRandomForest" as seen above with high accuracy
+```{r}
+
+newtest<-read.csv("pml-testing.csv",na.strings=c("","NA","#DIV/0!"))
+newtest<-newtest[,colSums(is.na(newtest))==0]
+newtest<-newtest[,-c(1:7)]
+
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+predTest2<-predict(modFitRandomForest$finalModel,newtest, type="class")
+pml_write_files(predTest2)
+
+```
